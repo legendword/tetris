@@ -1,0 +1,837 @@
+<!DOCTYPE HTML>
+<html>
+<title>Tetris - Legendword</title>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="dependencies/main.css" />
+    <script src="dependencies/jquery-1.11.3.js"></script>
+    <link rel="stylesheet" href="dependencies/bootstrap.min.css">
+    <script src="dependencies/bootstrap.min.js"></script>
+    <script>
+    //size 20*10
+    var border = {
+            top: 25,
+            left: 25,
+            width: 10,
+            height: 20,
+            smwidth: 3, //for 'next block' display
+            smheight: 4,
+            blockSize: 30, //if changing this, also change css .square
+            smblockSize: 20, //also change .smsquare
+            borderSize: 1
+        },
+        blocks = [{
+                name: "I",
+                content: [
+                    [{ x: 0, y: -3 }, { x: 0, y: -2 }, { x: 0, y: -1 }, { x: 0, y: 0 }],
+                    [{ x: -1, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }]
+                ],
+                bounds: [ //boundary of x of each flip
+                    [0, 0],
+                    [-1, 2]
+                ],
+                height: [4, 2]
+            },
+            {
+                name: "J",
+                content: [
+                    [{ x: -1, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: -1 }],
+                    [{ x: 0, y: -2 }, { x: 0, y: -1 }, { x: 0, y: 0 }, { x: 1, y: 0 }],
+                    [{ x: -1, y: 0 }, { x: -1, y: -1 }, { x: 0, y: -1 }, { x: 1, y: -1 }],
+                    [{ x: -1, y: -2 }, { x: 0, y: -2 }, { x: 0, y: -1 }, { x: 0, y: 0 }]
+                ],
+                bounds: [ //boundary of x of each flip
+                    [-1, 1],
+                    [0, 1],
+                    [-1, 1],
+                    [-1, 0]
+                ],
+                height: [2, 3, 2, 3]
+            },
+            {
+                name: "L",
+                content: [
+                    [{ x: -1, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: -1, y: -1 }],
+                    [{ x: 0, y: -2 }, { x: 0, y: -1 }, { x: 0, y: 0 }, { x: 1, y: -2 }],
+                    [{ x: 1, y: 0 }, { x: -1, y: -1 }, { x: 0, y: -1 }, { x: 1, y: -1 }],
+                    [{ x: -1, y: 0 }, { x: 0, y: -2 }, { x: 0, y: -1 }, { x: 0, y: 0 }]
+                ],
+                bounds: [ //boundary of x of each flip
+                    [-1, 1],
+                    [0, 1],
+                    [-1, 1],
+                    [-1, 0]
+                ],
+                height: [2, 3, 2, 3]
+            },
+            {
+                name: "O",
+                content: [
+                    [{ x: 0, y: 0 }, { x: 0, y: -1 }, { x: 1, y: -1 }, { x: 1, y: 0 }]
+                ],
+                bounds: [ //boundary of x of each flip
+                    [0, 1]
+                ],
+                height: [2]
+            },
+            {
+                name: "S",
+                content: [
+                    [{ x: 0, y: 0 }, { x: 0, y: -1 }, { x: -1, y: 0 }, { x: 1, y: -1 }],
+                    [{ x: 0, y: -2 }, { x: 0, y: -1 }, { x: 1, y: -1 }, { x: 1, y: 0 }]
+                ],
+                bounds: [ //boundary of x of each flip
+                    [-1, 1],
+                    [0, 1]
+                ],
+                height: [2, 3]
+            },
+            {
+                name: "Z",
+                content: [
+                    [{ x: 0, y: 0 }, { x: 0, y: -1 }, { x: -1, y: -1 }, { x: 1, y: 0 }],
+                    [{ x: -1, y: 0 }, { x: -1, y: -1 }, { x: 0, y: -1 }, { x: 0, y: -2 }]
+                ],
+                bounds: [ //boundary of x of each flip
+                    [-1, 1],
+                    [-1, 0]
+                ],
+                height: [2, 3]
+            },
+            {
+                name: "T",
+                content: [
+                    [{ x: -1, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: -1 }],
+                    [{ x: 0, y: -2 }, { x: 0, y: -1 }, { x: 0, y: 0 }, { x: 1, y: -1 }],
+                    [{ x: -1, y: -1 }, { x: 0, y: -1 }, { x: 0, y: 0 }, { x: 1, y: -1 }],
+                    [{ x: -1, y: -1 }, { x: 0, y: -2 }, { x: 0, y: -1 }, { x: 0, y: 0 }]
+                ],
+                bounds: [ //boundary of x of each flip
+                    [-1, 1],
+                    [0, 1],
+                    [-1, 1],
+                    [-1, 0]
+                ],
+                height: [2, 3, 2, 3]
+            }
+        ],
+        general = {
+            startPos: [4, -1],
+            userMoveInterval: 120,
+            beforeClearline: 250,
+            devmode: false,
+            interval: 800,
+            buttonToKeyboard: [null, 37, 39, 38, 40, 32]
+        },
+        rowrandom = function() {
+            var d = Math.floor(Math.random() * allBlocks);
+            return blocks[d];
+        },
+        current = {},
+        next,
+        active = {}, //store active blocks
+        moving = {}, //store current moving blocks
+        pause = false,
+        currentInterval,
+        intv,
+        speeded = false,
+        score = 0,
+        speedChange = [800, 700, 650, 600, 550, 500, 450, 400, 350, 320, 280, 240, 220, 200, 180, 160, 140, 120, 100, 90, 80, 70, 60, 50]
+    //        speedChange = [0.67, 0.5, 0.33, 0.25, 0.23, 0.2, 0.16, 0.125, 0.1],
+    //        speedChangeText = ["1.5", "2", "3", "4", "4.5", "5", "6", "8", "10"],
+    speedChangeCondition = [0, 300, 500, 700, 1000, 1600, 2400, 3600, 4800, 6000, 8800, 9900, 12000, 14000, 18000, 22000, 25000, 35000, 60000, 90000, 130000, 160000, 200000, 250000],
+        nextSpeedLevel = 0,
+        preBlocks = [],
+        prePos = [0, 0],
+        upd = 0,
+        userMove = null,
+        moveDir = 0,
+        dellines = {},
+        totallines = 0,
+        inputMode = 0,
+        init = function() {
+            next = rowrandom();
+            current.pos = [];
+            newline();
+            addScore(0);
+            update();
+        },
+        update = function() {
+            clearCurrent();
+            var npos = [current.pos[0], current.pos[1] + 1];
+            if (npos[1] >= border.height || !checkCollapse(current.s, npos, current.flip)) { //can't go down
+                //console.log("Hit");
+                draw(current.s, current.pos, current.flip, false); //mv is false to make it stable
+                if (current.pos[1] < 0) {
+                    gameover();
+                    return false;
+                }
+                checkLines();
+                newline();
+            } else {
+                current.pos[1] = npos[1];
+                drawCurrent();
+            }
+            if (!pause) upd = setTimeout("update()", currentInterval);
+        },
+        clearCurrent = function() {
+            clear(current.s, current.pos, current.flip, true);
+        },
+        drawCurrent = function() {
+            draw(current.s, current.pos, current.flip, true);
+        },
+        clear = function(a, b, c, mv) {
+            var f = a.content[c];
+            for (var i = 0; i < f.length; i++) {
+                clearBlock(b[0] + f[i].x, b[1] + f[i].y, mv);
+            }
+        },
+        clearBlock = function(tx, ty, mv) { //mv: true for clearing moving block, false for not clearing moving block
+            if (!inBorderXY(tx, ty)) return false;
+            if (mv == false && moving[tx + "-" + ty]) return false;
+            $("#" + tx + "-" + ty).attr("class", "square");
+            active[tx + "-" + ty] = false;
+        },
+        clearBlockPre = function(tx, ty) {
+            if (hasBlockXY(tx, ty)) return false;
+            $("#" + tx + "-" + ty).attr("class", "square");
+        },
+        draw = function(a, b, c, mv) {
+            var f = a.content[c];
+            for (var i = 0; i < f.length; i++) {
+                drawBlock(b[0] + f[i].x, b[1] + f[i].y, a.name, mv);
+            }
+        },
+        drawPre = function(a, b, c) {
+            var f = a.content[c];
+            for (var i = 0; i < f.length; i++) {
+                var mx = b[0] + f[i].x,
+                    my = b[1] + f[i].y;
+                if (hasBlockXY(mx, my)) continue; //avoid affecting existing blocks
+                drawBlockPre(mx, my);
+                preBlocks.push([mx, my]);
+            }
+        },
+        drawBlock = function(tx, ty, tn, mv) { //where mv is true for blocks going down and false for blocks stable.
+            //console.log(tx+","+ty);
+            //console.log($("#"+tx+"-"+ty)[0]);
+            if (!inBorderXY(tx, ty)) return false;
+            $("#" + tx + "-" + ty).attr("class", "square " + tn);
+            active[tx + "-" + ty] = tn;
+            moving[tx + "-" + ty] = mv;
+        },
+        drawBlockPre = function(tx, ty) {
+            if (!inBorderXY(tx, ty)) return false;
+            $("#" + tx + "-" + ty).attr("class", "square pre");
+        },
+        clearNext = function() {
+            for (var i = 0; i < border.smwidth; i++) {
+                for (var j = 0; j < border.smheight; j++) {
+                    $("#sm-" + i + "-" + j).attr("class", "smsquare");
+                }
+            }
+        },
+        drawNext = function(a) {
+            var f = a.content[0]; //default flip
+            for (var i = 0; i < f.length; i++) {
+                var cord = [1 + f[i].x, 3 + f[i].y]; //(1,3) is the base coordinate for nextblock
+                $("#sm-" + cord[0] + "-" + cord[1]).attr("class", "smsquare " + a.name);
+            }
+        },
+        hasBlock = function(a) {
+            return !active[a[0] + "-" + a[1]] === false;
+        },
+        hasBlockXY = function(a, b) {
+            return !active[a + "-" + b] === false;
+        },
+        hasBlockXYWithoutCurrent = function(a, b) {
+            return (!active[a + "-" + b] === false) && (!moving[a + "-" + b]);
+        },
+        inBorderXY = function(a, b) {
+            return a >= 0 && a < border.width && b >= 0 && b < border.height;
+        },
+        checkLines = function() {
+            //check if able to clear
+            dellines = {};
+            totallines = 0;
+            dellines[-1] = false;
+            for (var tmy = 0; tmy < border.height; tmy++) {
+                dellines[tmy] = false;
+                var tmx = 0;
+                for (; tmx < border.width; tmx++) {
+                    if (!active[tmx + "-" + tmy]) break;
+                }
+                if (tmx == border.width) {
+                    //                    console.log("Clear line ", tmy);
+                    dellines[tmy] = true;
+                    totallines++;
+                }
+            }
+            if (totallines > 0) {
+                //                if (general.devmode) {
+                //some color changing before clearing
+                for (var tmy = 0; tmy < border.height; tmy++) {
+                    if (dellines[tmy]) {
+                        for (var tmx = 0; tmx < border.width; tmx++) {
+                            drawBlock(tmx, tmy, "clear", false);
+                        }
+                    }
+                }
+                setTimeout("clearLines()", general.beforeClearline);
+                //                } else clearLines();
+            } else {
+                addScore(10);
+            }
+        },
+        clearLines = function() {
+            var foundline = false;
+            for (var tmy = border.height - 1; tmy >= 0; tmy--) {
+                //console.log("checking line ",tmy);
+                if (!foundline && !dellines[tmy]) continue;
+                //console.log("found deleting line ",tmy);
+                foundline = true;
+                var ny = tmy - 1;
+                while (ny >= 0 && dellines[ny] == true) {
+                    ny--;
+                }
+                dellines[ny] = true;
+                //console.log("Move line ",ny," to line ",tmy);
+                for (var tmx = 0; tmx < border.width; tmx++) {
+                    clearBlock(tmx, tmy, false);
+                    if (hasBlockXYWithoutCurrent(tmx, ny)) {
+                        drawBlock(tmx, tmy, active[tmx + "-" + ny], false);
+                    }
+                }
+            }
+            addScore(Math.pow(2, totallines - 1) * 100);
+            seekPre();
+        },
+        newline = function() {
+            current.s = next;
+            current.pos[0] = general.startPos[0];
+            current.pos[1] = general.startPos[1];
+            current.flip = 0;
+            next = rowrandom();
+            clearNext();
+            drawNext(next);
+            seekPre(); //find falling bottom position
+        },
+        move = function() {
+            var dr = moveDir;
+            if (pause) return false;
+            var mpos = [current.pos[0], current.pos[1]];
+            if (dr < 0) mpos[0]--;
+            else mpos[0]++;
+            if (mpos[0] + current.s.bounds[current.flip][0] < 0 || mpos[0] + current.s.bounds[current.flip][1] >= border.width) {
+                //console.log("Unable to move: out of bounds");
+                return false;
+            }
+            clearCurrent();
+            if (checkCollapse(current.s, mpos, current.flip)) {
+                current.pos[0] = mpos[0];
+                current.pos[1] = mpos[1];
+            } //else console.log("Unable to move: collapsed");
+            drawCurrent();
+            seekPre();
+        },
+        seekPre = function() {
+            for (var i = 0; i < preBlocks.length; i++) {
+                clearBlockPre(preBlocks[i][0], preBlocks[i][1]);
+            }
+            preBlocks = [];
+            var kpos = [current.pos[0], current.pos[1]];
+            //console.log("bebefore ",kpos);
+            //            kpos[1] += current.s.height[current.flip];
+            //console.log("before ",kpos);
+            //            var chngd = false;
+            while (true) {
+                kpos[1]++;
+                if (kpos[1] >= border.height) break;
+                if (!checkCollapseWithoutCurrent(current.s, kpos, current.flip)) break;
+                //                chngd = true;
+            }
+            kpos[1]--;
+            //if (!chngd) return false;
+            //console.log("after ",kpos);
+            drawPre(current.s, kpos, current.flip);
+            prePos[0] = kpos[0];
+            prePos[1] = kpos[1];
+        },
+        checkCollapse = function(a, b, c) {
+            var f = a.content[c];
+            for (var i = 0; i < f.length; i++) {
+                if (inBorderXY(b[0] + f[i].x, b[1] + f[i].y) && hasBlockXY(b[0] + f[i].x, b[1] + f[i].y)) {
+                    return false; //collapsed
+                }
+            }
+            return true;
+        },
+        checkCollapseWithoutCurrent = function(a, b, c) {
+            var f = a.content[c];
+            for (var i = 0; i < f.length; i++) {
+                var tx = b[0] + f[i].x,
+                    ty = b[1] + f[i].y;
+                if (inBorderXY(tx, ty) && hasBlockXY(tx, ty) && !moving[tx + "-" + ty]) {
+                    return false; //collapsed
+                }
+            }
+            return true;
+        },
+        checkInBorder = function(a, b, c) {
+            if (inBorderXY(b[0] + a.bounds[c][0], b[1]) && inBorderXY(b[0] + a.bounds[c][1], b[1])) return true;
+            else return false;
+        },
+        checkInBorderFlip = function(a, b, c) {
+            if (inBorderXY(b[0] + a.bounds[c][0], 1) && inBorderXY(b[0] + a.bounds[c][1], 1)) return true; //y is always 1 so no restrict on y-axis
+            else return false;
+        },
+        flip = function() {
+            if (pause) return false;
+            var tm = current.flip + 1;
+            if (tm >= current.s.content.length) tm = 0;
+            if (checkInBorderFlip(current.s, current.pos, tm)) {
+                clearCurrent();
+                current.flip = tm;
+                drawCurrent();
+                seekPre();
+            } else {
+                //console.log("Unable to flip: out of bounds");
+            }
+        },
+        flipReverse = function() {
+            if (pause) return false;
+            var tm = current.flip - 1;
+            if (tm < 0) tm = current.s.content.length - 1;
+            if (checkInBorderFlip(current.s, current.pos, tm)) {
+                clearCurrent();
+                current.flip = tm;
+                drawCurrent();
+                seekPre();
+            } else {
+                //console.log("Unable to flip: out of bounds");
+            }
+        },
+        addScore = function(t) {
+            score += t;
+            $("#sc").text(score);
+            if (score >= speedChangeCondition[nextSpeedLevel]) {
+                general.interval = speedChange[nextSpeedLevel];
+                currentInterval = general.interval;
+                var ns = 1000 / general.interval;
+                $("#sp").text(ns.toFixed(2));
+                nextSpeedLevel++;
+                $("#lv").text(nextSpeedLevel);
+            }
+        },
+        directdown = function() {
+            //go street down to the bottom
+            if (pause) return false;
+            clearCurrent();
+            current.pos[0] = prePos[0];
+            current.pos[1] = prePos[1];
+            drawCurrent();
+            clearTimeout(upd);
+            update();
+        },
+        restart = function() {
+            if (confirm("Are you sure to restart the game?") == false) return false;
+            pause = true;
+            for (var tx = 0; tx < border.width; tx++) {
+                for (var ty = 0; ty < border.height; ty++) {
+                    clearBlock(tx, ty, true);
+                }
+            }
+            newline();
+            score = 0;
+            nextSpeedLevel = 0;
+            addScore(0);
+            clearTimeout(upd);
+            pause = false;
+            update();
+        },
+        gameover = function() {
+            pause = true;
+            var hs = false;
+            if (score > highscore) {
+                highscore = score;
+                localStorage["tetrishigh"] = score;
+                $("#hsc").text(score);
+                hs = true;
+            }
+            alert("Game Over!\nYour Score: " + score + (hs ? "\nNew Record!" : ""));
+        },
+        isMobile = function() {
+            var userAgentInfo = navigator.userAgent;
+            var Agents = new Array("Android", "iPhone", "SymbianOS", "Windows Phone", "iPad", "iPod");
+            var flag = false;
+            for (var v = 0; v < Agents.length; v++) {
+                if (userAgentInfo.indexOf(Agents[v]) > 0) { flag = true; break; }
+            }
+            return flag;
+        },
+        keydownAction = function(t) {
+            if (inputMode == 0) {
+                switch (t) {
+                    case 38: //up
+                        //flip
+                        flip();
+                        break;
+                    case 40: //down
+                        //accelerate
+                        if (!speeded) {
+                            //currentInterval *= 0.25;
+                            currentInterval = 50;
+                            speeded = true;
+                            clearTimeout(upd);
+                            update();
+                        }
+                        break;
+                    case 37: //left
+                        if (!moveDir) {
+                            moveDir = -1;
+                            move();
+                            userMove = setInterval("move()", general.userMoveInterval);
+                        } else {
+                            moveDir = -1;
+                        }
+                        break;
+                    case 39: //right
+                        if (!moveDir) {
+                            moveDir = 1;
+                            move();
+                            userMove = setInterval("move()", general.userMoveInterval);
+                        } else {
+                            moveDir = 1;
+                        }
+                        break;
+                    case 27: //esc
+                        pause = !pause;
+                        if (!pause) update();
+                        else clearTimeout(upd);
+                        break;
+                    case 32: //space
+                        directdown();
+                        break;
+                    case 68: //"d"
+                        general.devmode = !general.devmode;
+                        console.log("Dev Mode is now " + (general.devmode ? "on" : "off"));
+                        break;
+                    default:
+                        break;
+                }
+            } else {
+                switch (t) {
+                    case 38: //up
+                        //flip
+                        flip();
+                        break;
+                    case 40: //down
+                        flipReverse();
+                        break;
+                    case 16: //shift
+                        //accelerate
+                        if (!speeded) {
+                            //currentInterval *= 0.25;
+                            currentInterval = 50;
+                            speeded = true;
+                            clearTimeout(upd);
+                            update();
+                        }
+                        break;
+                    case 37: //left
+                        if (!moveDir) {
+                            moveDir = -1;
+                            move();
+                            userMove = setInterval("move()", general.userMoveInterval);
+                        } else {
+                            moveDir = -1;
+                        }
+                        break;
+                    case 39: //right
+                        if (!moveDir) {
+                            moveDir = 1;
+                            move();
+                            userMove = setInterval("move()", general.userMoveInterval);
+                        } else {
+                            moveDir = 1;
+                        }
+                        break;
+                    case 27: //esc
+                        pause = !pause;
+                        if (!pause) update();
+                        else clearTimeout(upd);
+                        break;
+                    case 32: //space
+                        directdown();
+                        break;
+                    case 68: //"d"
+                        general.devmode = !general.devmode;
+                        console.log("Dev Mode is now " + (general.devmode ? "on" : "off"));
+                        break;
+                    default:
+                        break;
+                }
+            }
+        },
+        keyupAction = function(t) {
+            if (inputMode == 0) {
+                switch (t) {
+                    case 40: //down
+                        //decelerate
+                        currentInterval = general.interval;
+                        speeded = false;
+                        break;
+                    case 37: //left
+                        moveDir = 0;
+                        clearInterval(userMove);
+                        break;
+                    case 39: //right
+                        moveDir = 0;
+                        clearInterval(userMove);
+                        break;
+                    default:
+                        break;
+                }
+            } else {
+                switch (t) {
+                    case 16: //shift
+                        //decelerate
+                        currentInterval = general.interval;
+                        speeded = false;
+                        break;
+                    case 37: //left
+                        moveDir = 0;
+                        clearInterval(userMove);
+                        break;
+                    case 39: //right
+                        moveDir = 0;
+                        clearInterval(userMove);
+                        break;
+                    default:
+                        break;
+                }
+            }
+        },
+        changeMode = function() {
+            $("#sf-" + inputMode).hide();
+            if (inputMode == 0) {
+                inputMode = 1;
+            } else {
+                inputMode = 0;
+            }
+            $("#sf-" + inputMode).show();
+            localStorage["tetrisInputMode"] = inputMode.toString();
+        };
+
+    $(function() {
+        //init border
+        var ots = $("#outside");
+        for (var tmx = 0; tmx < border.width; tmx++) {
+            for (var tmy = 0; tmy < border.height; tmy++) {
+                var el = $("<div></div>");
+                ots.append(el);
+                el.attr("style", "position:absolute;top:" + (border.top + border.blockSize * tmy) + "px;left:" + (border.left + border.blockSize * tmx) + "px;");
+                el.attr("class", "square");
+                el.attr("id", tmx + "-" + tmy);
+                active[tmx + "-" + tmy] = false; //init active array
+                moving[tmx + "-" + tmy] = false; //init moving array
+            }
+        }
+        for (var i = 0; i < border.width; i++) {
+            active[i + "--1"] = false; //-1 row is false (for deleting lines)
+        }
+        //init nextblock border
+        var ot = $("#nxb");
+        for (var tmx = 0; tmx < border.smwidth; tmx++) {
+            for (var tmy = 0; tmy < border.smheight; tmy++) {
+                var el = $("<div></div>");
+                ot.append(el);
+                el.attr("style", "position:absolute;top:" + (border.smblockSize * tmy) + "px;left:" + (border.smblockSize * tmx) + "px;");
+                el.attr("class", "smsquare");
+                el.attr("id", "sm-" + tmx + "-" + tmy);
+            }
+        }
+        //init variables
+        allBlocks = blocks.length;
+        //mobile support
+        if (isMobile()) {
+            //if (true) {
+            $("#mbtns").show();
+            $(".mb").on("mousedown", function() {
+                var tm = general.buttonToKeyboard[parseInt(this.dataset.mb)];
+                keydownAction(tm);
+            });
+            $(".mb").on("mouseup", function() {
+                var tm = general.buttonToKeyboard[parseInt(this.dataset.mb)];
+                keyupAction(tm);
+            });
+        }
+        //input mode storage
+        if (localStorage["tetrisInputMode"]!=null) {
+            if (localStorage["tetrisInputMode"]=="1") {
+                changeMode();
+            }
+        }
+        else {
+            localStorage["tetrisInputMode"] = "0";
+        }
+        //init listeners
+        window.addEventListener("keydown", function(t) {
+            keydownAction(t.keyCode);
+        });
+        window.addEventListener("keyup", function(t) {
+            keyupAction(t.keyCode);
+        });
+        //init highscore
+        var d = localStorage["tetrishigh"];
+        if (d == null) highscore = 0;
+        else highscore = parseInt(d);
+        if (isNaN(highscore)) highscore = 0;
+        $("#hsc").text(highscore);
+        //init game
+        init();
+    });
+    </script>
+    <style>
+    /* #outside {position:fixed;bottom:0;top:0;left:0;right:0;margin:auto;height:800px;width:800px;} */
+
+    .square {
+        width: 28px;
+        height: 28px;
+        border: 1px solid #000;
+    }
+
+    .smsquare {
+        width: 18px;
+        height: 18px;
+        border: 1px solid #000;
+    }
+
+    #score {
+        position: absolute;
+        top: 30px;
+        left: 400px;
+        width: 600px;
+        height: 600px;
+        font-size: 24px;
+    }
+
+    #nxb {
+        top: -50px;
+        left: 160px;
+        position: relative;
+        width: 80px;
+        height: 100px;
+    }
+
+    #nxo {
+        height: 100px;
+    }
+
+    .mb {
+        font-size: 30px;
+        width: 40px;
+    }
+
+    .sf {
+        font-size: 16px !important;
+    }
+
+    .I {
+        background-color: #1bef18;
+    }
+
+    .J {
+        background-color: #ffeb3b;
+    }
+
+    .L {
+        background-color: #03a9f4;
+    }
+
+    .O {
+        background-color: #f97e00;
+    }
+
+    .S {
+        background-color: #2afff5;
+    }
+
+    .Z {
+        background-color: #f44336;
+    }
+
+    .T {
+        background-color: #831df3;
+    }
+
+    .clear {
+        background-color: #fff8dc;
+    }
+
+    .pre {
+        background-color: #989898;
+    }
+
+    .small {
+        font-size: 80%;
+    }
+
+    /* re-reboot */
+    *,
+    ::after,
+    ::before {
+        box-sizing: initial;
+    }
+
+    #outside,#score {
+        margin-top: 60px;
+    }
+    #outside {
+        position:absolute;
+        top: 0;
+    }
+
+    body {
+        overflow-x: hidden;
+    }
+    </style>
+</head>
+
+<body>
+    <div id="outside" tabindex="1"></div>
+    <div id="score">
+        <p>Legendword Tetris <span class="sf">v1.5.1</span></p>
+        <p><span class="small">Score:</span> <span id="sc">0</span></p>
+        <p><span class="small">Level:</span> <span id="lv">1</span></p>
+        <p><span class="small">Speed:</span> <span id="sp">1.25</span> <span class="small">blocks/second</span></p>
+        <div id="nxo">
+            <p><span class="small">Next Shape:</span></p>
+            <div id="nxb"></div>
+        </div>
+        <p><span class="small">High Score:</span> <span id="hsc"></span></p>
+        <div class="sf">
+            <p><button class="btn btn-primary" id="rs" onclick="restart();">Restart</button>&nbsp;
+                <button class="btn btn-secondary" id="ps" onclick="keydownAction(27);">Pause/Continue</button></p>
+            <p><button class="btn btn-info" id="cm" onclick="changeMode();">Change Input Mode</button></p>
+            <!--&nbsp;&nbsp; <input type="checkbox" id="graymode" />单色模式&nbsp;&nbsp; <input type="checkbox" id="preshow" checked="checked" /> 掉落位置提示 -->
+            <p class="sf" id="sf-0">Instructions: Press ESC to pause/continue the game. Use arrow keys for control: UP to rotate the shape, DOWN to speed up, LEFT/RIGHT to move the shape horizontally. Press SPACE to immediately move the shape to the bottom. This game has mobile support.
+                <br /><br />&copy;Legendword 2018-2019
+            </p>
+            <p class="sf" id="sf-1" style="display: none;">Instructions: Press ESC to pause/continue the game. Use arrow keys for control: UP and DOWN to rotate the shape, LEFT/RIGHT to move the shape horizontally. Press SHIFT to speed up, and SPACE to immediately move the shape to the bottom. This game has mobile support.
+                <br /><br />&copy;Legendword 2018-2019
+            </p>
+        </div>
+        <div id="mbtns" style="display:none;">
+            <button class="mb" data-mb="1">&lt;</button>
+            <button class="mb" data-mb="2">&gt;</button>
+            <button class="mb" data-mb="3">^</button>
+            <button class="mb" data-mb="4">v</button>
+            <button class="mb" data-mb="5">_</button>
+        </div>
+    </div>
+</body>
+
+</html>

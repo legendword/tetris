@@ -1,0 +1,44 @@
+/* Legendword Main CSS File
+   Used for Legendword webpages default CSS initializing.
+   Started use in 2016/01
+*/
+body {font-family: 'Lucida Sans', Verdana, Calibri, Helvetica, Arial, sans-serif;}
+p, h1, h2, h3, h4, h5, h6 {font-family: 'Lucida Sans', Verdana, Calibri, Helvetica, Arial, sans-serif;}
+.font-pre {font-family:monospace;}
+.left {text-align:left;} 
+.center {text-align:center;} 
+.right {text-align:right;} 
+.fleft {float:left;}
+.fcenter {float:center;}
+.fright {float:right;}
+a:link {color:#00BFFF;}
+a:visited {color:#2E9AFE;}
+a:hover {color:#FFBF00;}
+a:active {color:#FF0000;}
+/*
+a:link,a:visited {color:#828282;text-decoration:underline;cursor:pointer;}
+a:hover,a:active {color:#000;text-decoration:none;}
+*/
+a.ios {text-decoration:none;color:#007AFF;outline:0;}
+.cursor-pointer {cursor:pointer;}
+.cursor-default {cursor:default;}
+.cursor-loading {cursor:process,wait;}
+.cursor-none {cursor:none;}
+.border-none {border:none;}
+.padding-none {padding:none;}
+.margin-none {margin:none;}
+.note {color:#C6CBC8;}
+.nocopy, .noselect {
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -o-user-select: none;
+  user-select: none; 
+}
+::-moz-selection {background:orange;}
+::selection {background:orange;}
+.invisible {display:none;}
+#l-logo {font-family:'Lucida Sans';font-size:30px;background:-webkit-linear-gradient(left, #81FFCD, #FFFFFF);width:100%;cursor:default;border-radius:5px;margin:5px;}
+#l-logo-inner {padding:5px;}
+#l-logo-underscore {font-weight:bold;}
+.navbar.lnav {background-color:#f8f9fa!important;}
